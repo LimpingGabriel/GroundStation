@@ -18,6 +18,7 @@ import org.mapsforge.map.rendertheme.InternalRenderTheme;
 import org.mapsforge.map.rendertheme.XmlRenderTheme;
 import org.mapsforge.map.rendertheme.rule.RenderThemeFuture;
 
+import application.ResizableCanvas;
 import javafx.application.Platform;
 import javafx.scene.Group;
 import javafx.scene.canvas.Canvas;
@@ -38,14 +39,28 @@ import java.io.InputStream;
  * This sample demo how to render & save a tile.
  */
 public class MapWidget extends StackPane {
-	private Canvas canvas;
+	private ResizableCanvas canvas;
 	private GraphicsContext gc;
 	
 	
 	
 	public MapWidget() {
 		super();
-		this.canvas = new Canvas(800, 600);
+		this.canvas = new ResizableCanvas();
+		
+		this.widthProperty().addListener(e -> {
+			this.canvas.resize(this.getWidth(), this.getHeight());
+			this.draw();
+			this.drawFile();
+		});
+		
+		this.heightProperty().addListener(e -> {
+			this.canvas.resize(this.getWidth(), this.getHeight());
+			this.draw();
+			this.drawFile();
+		});
+		
+		
 		
 		this.gc = this.canvas.getGraphicsContext2D();
 		//this.getChildren().add(new Button("TEST BUTTON"));

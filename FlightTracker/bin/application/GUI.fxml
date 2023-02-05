@@ -39,6 +39,6 @@
       </MenuBar>
    </top>
    <center>
-      <MapWidget prefHeight="150.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
+      <MapWidget />
    </center>
 </BorderPane>
