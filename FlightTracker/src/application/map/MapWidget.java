@@ -1,8 +1,8 @@
 package application.map;
+import application.ResizableCanvas;
 
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.graphics.TileBitmap;
-import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.core.model.Tile;
 import org.mapsforge.core.util.MercatorProjection;
 import org.mapsforge.map.awt.graphics.AwtGraphicFactory;
@@ -18,27 +18,22 @@ import org.mapsforge.map.rendertheme.InternalRenderTheme;
 import org.mapsforge.map.rendertheme.XmlRenderTheme;
 import org.mapsforge.map.rendertheme.rule.RenderThemeFuture;
 
-import application.ResizableCanvas;
+import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.layout.StackPane;
-import javafx.scene.paint.Color;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * This sample demo how to render & save a tile.
  */
 public class MapWidget extends StackPane {
-	private ResizableCanvas canvas;
+	@FXML private ResizableCanvas canvas;
 	private GraphicsContext gc;
 	MapDataStore mapData;
 	GraphicFactory gf;	
@@ -58,7 +53,15 @@ public class MapWidget extends StackPane {
     private static final String DEFAULT_MAP_PATH = "C:\\Users\\Benjamin\\OneDrive\\University\\Undergraduate\\MRT\\GroundStation\\FlightTracker\\bin\\application\\prince-edward-island.map";
 	
 	public MapWidget() {
-		super();
+		FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("MapWidget.fxml"));
+		fxmlLoader.setRoot(this);
+		fxmlLoader.setController(this);
+		try {
+			fxmlLoader.load();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
 		this.mapData = new MapFile(DEFAULT_MAP_PATH);
 		this.gf = AwtGraphicFactory.INSTANCE;
 		this.theme = InternalRenderTheme.OSMARENDER;
@@ -72,31 +75,30 @@ public class MapWidget extends StackPane {
         this.tileCache = new InMemoryTileCache(256);
         this.tileBasedLabelStore = new TileBasedLabelStore(this.tileCache.getCapacityFirstLevel());
         this.renderer = new DatabaseRenderer(this.mapData, this.gf, this.tileCache, this.tileBasedLabelStore, true, true, null);
-        
-		this.canvas = new ResizableCanvas();
 		
 		//Canvas resizing
-		this.widthProperty().addListener(e -> {
-			this.canvas.resize(this.getWidth(), this.getHeight());
-			//this.draw();
-			this.drawMap();
-		});
-		this.heightProperty().addListener(e -> {
-			this.canvas.resize(this.getWidth(), this.getHeight());
-			//this.draw();
-			this.drawMap();
-		});
+		this.widthProperty().addListener(e -> this.resizeCallback());
+		this.heightProperty().addListener(e -> this.resizeCallback());
 		
 		this.gc = this.canvas.getGraphicsContext2D();
-		//this.getChildren().add(new Button("TEST BUTTON"));
-		this.getChildren().add(canvas);
-		
-		//this.draw();
-		this.drawMap();
-		
-		
 		
 	}
+	
+	private void resizeCallback() {
+		this.canvas.resize(this.getWidth(), this.getHeight());
+		this.drawMap();
+	}
+	
+	@FXML protected void zoomInMap(ActionEvent event) {
+		this.increaseZoom();
+		this.drawMap();
+	}
+	
+	@FXML protected void zoomOutMap(ActionEvent event) {
+		this.decreaseZoom();
+		this.drawMap();
+	}
+	
     
 	public void increaseZoom() {
 		if (this.ZOOM < 20) {
