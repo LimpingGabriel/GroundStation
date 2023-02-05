@@ -1,14 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.text.Text?>
+<?import application.map.MapController?>
+
+
 <?import application.map.MapWidget?>
 
 
 <BorderPane 
+	fx:controller="application.map.MapController"
 	maxHeight="-Infinity" 
 	maxWidth="-Infinity" 
 	minHeight="-Infinity" 
@@ -39,6 +48,24 @@
       </MenuBar>
    </top>
    <center>
-      <MapWidget />
+      <MapWidget fx:id="offlineMapWidget">
+         <children>
+            <BorderPane prefHeight="200.0" prefWidth="200.0">
+               <right>
+                  <VBox prefHeight="89.0" prefWidth="30.0" style="-fx-background-color: #EEEEEE;" BorderPane.alignment="CENTER">
+                     <children>
+                        <Button id="mapZoomIn" onAction="#zoomInMap" mnemonicParsing="false" prefHeight="30.0" prefWidth="30.0" text="+" />
+                        <Button id="mapZoomOut" onAction="#zoomOutMap" mnemonicParsing="false" prefHeight="30.0" prefWidth="30.0" text="–" />
+                        <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Zoom" wrappingWidth="30.0">
+                           <font>
+                              <Font size="10.0" />
+                           </font>
+                        </Text>
+                     </children>
+                  </VBox>
+               </right>
+            </BorderPane>
+         </children>
+      </MapWidget>
    </center>
 </BorderPane>
