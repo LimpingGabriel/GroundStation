@@ -5,6 +5,8 @@ import application.map.MapWidget;
 import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.layout.StackPane;
@@ -16,30 +18,20 @@ public class Main extends Application {
     }
     
     @Override
-    public void start(Stage primaryStage) {
-        primaryStage.setTitle("Hello World!");
-        Button btn = new Button();
-        btn.setText("Say 'Hello World'");
-        btn.setOnAction(new EventHandler<ActionEvent>() {
- 
-            @Override
-            public void handle(ActionEvent event) {
-                System.out.println("Hello World!");
-            }
-        });
+    public void start(Stage stage) throws Exception {
+        Parent root = FXMLLoader.load(getClass().getResource("GUI.fxml"));
         
-        StackPane mapWidget = new StackPane();
-        mapWidget.getChildren().add(btn);
+        stage.setMaximized(true);
+        stage.setTitle("HAB Flight Computer v0.0.0");
+
         
-        StackPane root = new StackPane();
+        Scene scene = new Scene(root, stage.getWidth(), stage.getHeight());
         
-        root.getChildren().addAll(mapWidget);
+        stage.setScene(scene);
         
-        Scene scene = new Scene(root, 300, 250);
+        stage.show();
         
-        
-        primaryStage.setScene(scene);
-        
-        primaryStage.show();
     }
+    
+    
 }
