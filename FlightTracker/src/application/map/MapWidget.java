@@ -18,6 +18,8 @@ import org.mapsforge.map.rendertheme.InternalRenderTheme;
 import org.mapsforge.map.rendertheme.XmlRenderTheme;
 import org.mapsforge.map.rendertheme.rule.RenderThemeFuture;
 
+import org.mapsforge.map.layer.renderer.TileRendererLayer;
+
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -34,21 +36,25 @@ import java.util.ArrayList;
  */
 public class MapWidget extends StackPane {
 	@FXML private ResizableCanvas canvas;
+	
 	private GraphicsContext gc;
-	MapDataStore mapData;
-	GraphicFactory gf;	
-    XmlRenderTheme theme;
-    DisplayModel dm;
-    RenderThemeFuture rtf;
-    InMemoryTileCache tileCache;
-    TileBasedLabelStore tileBasedLabelStore;
-    DatabaseRenderer renderer;
+	private MapDataStore mapData;
+	private GraphicFactory gf;	
+	private XmlRenderTheme theme;
+    private DisplayModel dm;
+    private RenderThemeFuture rtf;
+    private InMemoryTileCache tileCache;
+    private TileBasedLabelStore tileBasedLabelStore;
+    private DatabaseRenderer renderer;
+    private TileRendererLayer tileRendererLayer;
 
     // Location you'd like to render.
     private static final double LAT = 46.227220;
     private static final double LNG = -63.140568;
     private byte ZOOM = 16;
-    private static final double TILE_WIDTH = 256;
+    private static final int TILE_WIDTH = 256;
+    
+    
     
     private static final String DEFAULT_MAP_PATH = "C:\\Users\\Benjamin\\OneDrive\\University\\Undergraduate\\MRT\\GroundStation\\FlightTracker\\bin\\application\\prince-edward-island.map";
 	
@@ -65,7 +71,7 @@ public class MapWidget extends StackPane {
 		this.mapData = new MapFile(DEFAULT_MAP_PATH);
 		this.gf = AwtGraphicFactory.INSTANCE;
 		this.theme = InternalRenderTheme.OSMARENDER;
-		this.dm = new FixedTileSizeDisplayModel(256);
+		this.dm = new FixedTileSizeDisplayModel(this.TILE_WIDTH);
 		this.rtf = new RenderThemeFuture(gf, theme, dm);
 		
         // Create RendererTheme.
@@ -120,14 +126,14 @@ public class MapWidget extends StackPane {
         double canvasCenterX = this.canvas.getWidth() / 2;
         double canvasCenterY = this.canvas.getHeight() / 2;
         
-        double pixelX = MercatorProjection.longitudeToPixelX(LNG, ZOOM, 256);
-        double pixelY = MercatorProjection.latitudeToPixelY(LAT, ZOOM, 256);
+        double pixelX = MercatorProjection.longitudeToPixelX(LNG, ZOOM, this.TILE_WIDTH);
+        double pixelY = MercatorProjection.latitudeToPixelY(LAT, ZOOM, this.TILE_WIDTH);
         
         double tileX = MercatorProjection.tileXToLongitude(tile.tileX, ZOOM);
         double tileY = MercatorProjection.tileYToLatitude(tile.tileY, ZOOM);
         
-        tileX = MercatorProjection.longitudeToPixelX(tileX, ZOOM, 256);
-        tileY = MercatorProjection.latitudeToPixelY(tileY, ZOOM, 256);
+        tileX = MercatorProjection.longitudeToPixelX(tileX, ZOOM, this.TILE_WIDTH);
+        tileY = MercatorProjection.latitudeToPixelY(tileY, ZOOM, this.TILE_WIDTH);
         
         
         double offset[] = new double[2];
@@ -146,14 +152,14 @@ public class MapWidget extends StackPane {
         int tx = MercatorProjection.longitudeToTileX(LNG, ZOOM);
     	
     	ArrayList<RendererJob> requiredJobs = new ArrayList<RendererJob>();
-    	Tile centerTile = new Tile(tx, ty, ZOOM, 256);
+    	Tile centerTile = new Tile(tx, ty, ZOOM, this.TILE_WIDTH);
     	
-    	double numTilesX = (int)(this.canvas.getWidth() / 2) / 256 + 2.0;
-    	double numTilesY = (int)(this.canvas.getHeight() / 2) / 256 + 2.0;
+    	double numTilesX = (int)(this.canvas.getWidth() / 2) / this.TILE_WIDTH + 2.0;
+    	double numTilesY = (int)(this.canvas.getHeight() / 2) / this.TILE_WIDTH + 2.0;
     	
     	for (int i = (int) -numTilesX; i < numTilesX; i++) {
     		for (int j = (int) -numTilesY; j < numTilesY; j++) {
-    			Tile presentTile = new Tile(tx+i, ty+j, ZOOM, 256);
+    			Tile presentTile = new Tile(tx+i, ty+j, ZOOM, this.TILE_WIDTH);
     			RendererJob job = new RendererJob(presentTile, this.mapData, this.rtf, this.dm, 1.0f, false, false);
     			requiredJobs.add(job);
     		}
@@ -172,6 +178,7 @@ public class MapWidget extends StackPane {
         	
         	TileBitmap tb = renderer.executeJob(job);
         	
+        	
         	ByteArrayOutputStream os = new ByteArrayOutputStream();
 
         	try {
@@ -183,20 +190,6 @@ public class MapWidget extends StackPane {
 				System.out.println("TESTSTS");
 				e.printStackTrace();
 			}
-        	/*
-        	PipedInputStream pi = new PipedInputStream();
-        	try {
-				PipedOutputStream po = new PipedOutputStream(pi);
-				Image im = new Image(pi);
-				tb.compress(po);
-		        this.drawWithOffset(im, offsetX, offsetY);
-		        
-			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			*/
-        	
         }
     }
 
