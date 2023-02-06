@@ -1,197 +1,264 @@
 package application.map;
-import application.ResizableCanvas;
 
 import org.mapsforge.core.graphics.GraphicFactory;
-import org.mapsforge.core.graphics.TileBitmap;
-import org.mapsforge.core.model.Tile;
-import org.mapsforge.core.util.MercatorProjection;
+import org.mapsforge.core.model.BoundingBox;
+import org.mapsforge.core.model.LatLong;
+import org.mapsforge.core.model.MapPosition;
+import org.mapsforge.core.model.Point;
+import org.mapsforge.core.util.LatLongUtils;
+import org.mapsforge.core.util.Parameters;
 import org.mapsforge.map.awt.graphics.AwtGraphicFactory;
+import org.mapsforge.map.awt.util.AwtUtil;
+import org.mapsforge.map.awt.util.JavaPreferences;
+import org.mapsforge.map.awt.view.MapView;
 import org.mapsforge.map.datastore.MapDataStore;
-import org.mapsforge.map.layer.cache.InMemoryTileCache;
-import org.mapsforge.map.layer.labels.TileBasedLabelStore;
-import org.mapsforge.map.layer.renderer.DatabaseRenderer;
-import org.mapsforge.map.layer.renderer.RendererJob;
-import org.mapsforge.map.model.DisplayModel;
-import org.mapsforge.map.model.FixedTileSizeDisplayModel;
+import org.mapsforge.map.datastore.MultiMapDataStore;
+import org.mapsforge.map.layer.Layers;
+import org.mapsforge.map.layer.cache.TileCache;
+import org.mapsforge.map.layer.debug.TileCoordinatesLayer;
+import org.mapsforge.map.layer.debug.TileGridLayer;
+import org.mapsforge.map.layer.download.TileDownloadLayer;
+import org.mapsforge.map.layer.download.tilesource.OpenStreetMapMapnik;
+import org.mapsforge.map.layer.download.tilesource.TileSource;
+import org.mapsforge.map.layer.hills.DiffuseLightShadingAlgorithm;
+import org.mapsforge.map.layer.hills.HillsRenderConfig;
+import org.mapsforge.map.layer.hills.MemoryCachingHgtReaderTileSource;
+import org.mapsforge.map.layer.renderer.TileRendererLayer;
+import org.mapsforge.map.model.IMapViewPosition;
+import org.mapsforge.map.model.Model;
+import org.mapsforge.map.model.common.PreferencesFacade;
 import org.mapsforge.map.reader.MapFile;
 import org.mapsforge.map.rendertheme.InternalRenderTheme;
-import org.mapsforge.map.rendertheme.XmlRenderTheme;
-import org.mapsforge.map.rendertheme.rule.RenderThemeFuture;
 
-import org.mapsforge.map.layer.renderer.TileRendererLayer;
-
+import javafx.embed.swing.SwingNode;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.image.Image;
 import javafx.scene.layout.StackPane;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+
+import javax.swing.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
+import java.util.prefs.Preferences;
 
-/**
- * This sample demo how to render & save a tile.
- */
 public class MapWidget extends StackPane {
-	@FXML private ResizableCanvas canvas;
+	//----------------FXML-----------------
 	
-	private GraphicsContext gc;
-	private MapDataStore mapData;
-	private GraphicFactory gf;	
-	private XmlRenderTheme theme;
-    private DisplayModel dm;
-    private RenderThemeFuture rtf;
-    private InMemoryTileCache tileCache;
-    private TileBasedLabelStore tileBasedLabelStore;
-    private DatabaseRenderer renderer;
-    private TileRendererLayer tileRendererLayer;
+	@FXML private SwingNode swingNode;
+	
+	
+    private static final GraphicFactory GRAPHIC_FACTORY = AwtGraphicFactory.INSTANCE;
+    private static final boolean SHOW_DEBUG_LAYERS = false;
+    private static final boolean SHOW_RASTER_MAP = false;
 
-    // Location you'd like to render.
-    private static final double LAT = 46.227220;
-    private static final double LNG = -63.140568;
-    private byte ZOOM = 16;
-    private static final int TILE_WIDTH = 256;
-    
-    
-    
-    private static final String DEFAULT_MAP_PATH = "C:\\Users\\Benjamin\\OneDrive\\University\\Undergraduate\\MRT\\GroundStation\\FlightTracker\\bin\\application\\prince-edward-island.map";
-	
-	public MapWidget() {
-		FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("MapWidget.fxml"));
-		fxmlLoader.setRoot(this);
-		fxmlLoader.setController(this);
-		try {
-			fxmlLoader.load();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		this.mapData = new MapFile(DEFAULT_MAP_PATH);
-		this.gf = AwtGraphicFactory.INSTANCE;
-		this.theme = InternalRenderTheme.OSMARENDER;
-		this.dm = new FixedTileSizeDisplayModel(this.TILE_WIDTH);
-		this.rtf = new RenderThemeFuture(gf, theme, dm);
-		
-        // Create RendererTheme.
-        Thread t = new Thread(rtf);
-        t.start();
-		
-        this.tileCache = new InMemoryTileCache(256);
-        this.tileBasedLabelStore = new TileBasedLabelStore(this.tileCache.getCapacityFirstLevel());
-        this.renderer = new DatabaseRenderer(this.mapData, this.gf, this.tileCache, this.tileBasedLabelStore, true, true, null);
-		
-		//Canvas resizing
-		this.widthProperty().addListener(e -> this.resizeCallback());
-		this.heightProperty().addListener(e -> this.resizeCallback());
-		
-		this.gc = this.canvas.getGraphicsContext2D();
-		
-	}
-	
-	private void resizeCallback() {
-		this.canvas.resize(this.getWidth(), this.getHeight());
-		this.drawMap();
-	}
-	
-	@FXML protected void zoomInMap(ActionEvent event) {
-		this.increaseZoom();
-		this.drawMap();
-	}
-	
-	@FXML protected void zoomOutMap(ActionEvent event) {
-		this.decreaseZoom();
-		this.drawMap();
-	}
-	
-    
-	public void increaseZoom() {
-		if (this.ZOOM < 20) {
-			this.ZOOM += 1;
-		} else {
-			//TO DO: disable button
-		}
-	}
-	
-	public void decreaseZoom() {
-		if (this.ZOOM > 0) {
-			this.ZOOM -= 1;
-		} else {
-			
-		}
-	}
-	
-    private double[] getOffset(Tile tile) {
-        double canvasCenterX = this.canvas.getWidth() / 2;
-        double canvasCenterY = this.canvas.getHeight() / 2;
-        
-        double pixelX = MercatorProjection.longitudeToPixelX(LNG, ZOOM, this.TILE_WIDTH);
-        double pixelY = MercatorProjection.latitudeToPixelY(LAT, ZOOM, this.TILE_WIDTH);
-        
-        double tileX = MercatorProjection.tileXToLongitude(tile.tileX, ZOOM);
-        double tileY = MercatorProjection.tileYToLatitude(tile.tileY, ZOOM);
-        
-        tileX = MercatorProjection.longitudeToPixelX(tileX, ZOOM, this.TILE_WIDTH);
-        tileY = MercatorProjection.latitudeToPixelY(tileY, ZOOM, this.TILE_WIDTH);
-        
-        
-        double offset[] = new double[2];
-        offset[1] = tileY - pixelY;
-        offset[0] = tileX  - pixelX;
-        return offset;
-    }
+    private static final String MESSAGE = "Are you sure you want to exit the application?";
+    private static final String TITLE = "Confirm close";
 
-    
-    private void drawWithOffset(Image im, double offsetX, double offsetY) {
-    	this.gc.drawImage(im, (this.canvas.getWidth() / 2) + offsetX, (this.canvas.getHeight() / 2) + offsetY);
-    }
-    
-    private ArrayList<RendererJob> getRequiredJobs(double LAT, double LNG, byte ZOOM) {
-    	int ty = MercatorProjection.latitudeToTileY(LAT, ZOOM);
-        int tx = MercatorProjection.longitudeToTileX(LNG, ZOOM);
+    /**
+     * Starts the {@code Samples}.
+     *
+     * @param args command line args: expects the map files as multiple parameters
+     *             with possible SRTM hgt folder as 1st argument.
+     */
+    public MapWidget() {
+    	//FXML
     	
-    	ArrayList<RendererJob> requiredJobs = new ArrayList<RendererJob>();
-    	Tile centerTile = new Tile(tx, ty, ZOOM, this.TILE_WIDTH);
     	
-    	double numTilesX = (int)(this.canvas.getWidth() / 2) / this.TILE_WIDTH + 2.0;
-    	double numTilesY = (int)(this.canvas.getHeight() / 2) / this.TILE_WIDTH + 2.0;
-    	
-    	for (int i = (int) -numTilesX; i < numTilesX; i++) {
-    		for (int j = (int) -numTilesY; j < numTilesY; j++) {
-    			Tile presentTile = new Tile(tx+i, ty+j, ZOOM, this.TILE_WIDTH);
-    			RendererJob job = new RendererJob(presentTile, this.mapData, this.rtf, this.dm, 1.0f, false, false);
-    			requiredJobs.add(job);
-    		}
+    	FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("MapWidget.fxml"));
+    	fxmlLoader.setRoot(this);
+    	fxmlLoader.setController(this);
+    	try {
+    		fxmlLoader.load();
+    	} catch (IOException e) {
+    		e.printStackTrace();
     	}
     	
-    	return requiredJobs;
-    }
+    	
+    	
+        // Square frame buffer
+        Parameters.SQUARE_FRAME_BUFFER = false;
 
-    
-    public void drawMap() {
-        ArrayList<RendererJob> requiredJobs = this.getRequiredJobs(LAT, LNG, ZOOM);
-        for (RendererJob job: requiredJobs) {
-        	double[] offset = this.getOffset(job.tile);
-        	double offsetX = offset[0];
-        	double offsetY = offset[1];
-        	
-        	TileBitmap tb = renderer.executeJob(job);
-        	
-        	
-        	ByteArrayOutputStream os = new ByteArrayOutputStream();
-
-        	try {
-        		tb.compress(os);
-        		Image im = new Image(new ByteArrayInputStream(os.toByteArray()));
-        		this.drawWithOffset(im, offsetX, offsetY);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				System.out.println("TESTSTS");
-				e.printStackTrace();
-			}
+        HillsRenderConfig hillsCfg = null;
+        /*
+        if (demFolder != null) {
+            MemoryCachingHgtReaderTileSource tileSource = new MemoryCachingHgtReaderTileSource(
+            		new DemFolderFS(demFolder), 
+            		new DiffuseLightShadingAlgorithm(), 
+            		AwtGraphicFactory.INSTANCE);
+            tileSource.setEnableInterpolationOverlap(true);
+            hillsCfg = new HillsRenderConfig(tileSource);
+            hillsCfg.indexOnThread();
+            args = Arrays.copyOfRange(args, 1, args.length);
         }
+        */
+
+        List<File> mapFiles = SHOW_RASTER_MAP ? null : getMapFiles();
+        final MapView mapView = createMapView();
+        final BoundingBox boundingBox = addLayers(mapView, mapFiles, hillsCfg);
+
+        final PreferencesFacade preferencesFacade = new JavaPreferences(Preferences.userNodeForPackage(MapWidget.class));
+
+        final JFrame frame = new JFrame();
+        frame.setTitle("Mapsforge Samples");
+        frame.add(mapView);
+        frame.pack();
+        frame.setSize(1024, 768);
+        frame.setLocationRelativeTo(null);
+        frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                int result = JOptionPane.showConfirmDialog(frame, MESSAGE, TITLE, JOptionPane.YES_NO_OPTION);
+                if (result == JOptionPane.YES_OPTION) {
+                    mapView.getModel().save(preferencesFacade);
+                    mapView.destroyAll();
+                    AwtGraphicFactory.clearResourceMemoryCache();
+                    frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+                }
+            }
+
+            @Override
+            public void windowOpened(WindowEvent e) {
+                final Model model = mapView.getModel();
+                model.init(preferencesFacade);
+                if (model.mapViewPosition.getZoomLevel() == 0 || !boundingBox.contains(model.mapViewPosition.getCenter())) {
+                    byte zoomLevel = LatLongUtils.zoomForBounds(model.mapViewDimension.getDimension(), boundingBox, model.displayModel.getTileSize());
+                    model.mapViewPosition.setMapPosition(new MapPosition(boundingBox.getCenterPoint(), zoomLevel));
+                }
+            }
+        });
+        
+        JPanel panel = new JPanel();
+        //panel.add(frame);
+        
+        frame.setVisible(true);
+        //swingNode.setContent(panel);
+        
+    }
+    
+
+    private static BoundingBox addLayers(MapView mapView, List<File> mapFiles, HillsRenderConfig hillsRenderConfig) {
+        Layers layers = mapView.getLayerManager().getLayers();
+
+        int tileSize = SHOW_RASTER_MAP ? 256 : 512;
+
+        // Tile cache
+        TileCache tileCache = AwtUtil.createTileCache(
+                tileSize,
+                mapView.getModel().frameBufferModel.getOverdrawFactor(),
+                1024,
+                new File(System.getProperty("java.io.tmpdir"), UUID.randomUUID().toString()));
+
+        final BoundingBox boundingBox;
+        if (SHOW_RASTER_MAP) {
+            // Raster
+            mapView.getModel().displayModel.setFixedTileSize(tileSize);
+            OpenStreetMapMapnik tileSource = OpenStreetMapMapnik.INSTANCE;
+            tileSource.setUserAgent("mapsforge-samples-awt");
+            TileDownloadLayer tileDownloadLayer = createTileDownloadLayer(tileCache, mapView.getModel().mapViewPosition, tileSource);
+            layers.add(tileDownloadLayer);
+            tileDownloadLayer.start();
+            mapView.setZoomLevelMin(tileSource.getZoomLevelMin());
+            mapView.setZoomLevelMax(tileSource.getZoomLevelMax());
+            boundingBox = new BoundingBox(LatLongUtils.LATITUDE_MIN, LatLongUtils.LONGITUDE_MIN, LatLongUtils.LATITUDE_MAX, LatLongUtils.LONGITUDE_MAX);
+        } else {
+            // Vector
+            mapView.getModel().displayModel.setFixedTileSize(tileSize);
+            MultiMapDataStore mapDataStore = new MultiMapDataStore(MultiMapDataStore.DataPolicy.RETURN_ALL);
+            for (File file : mapFiles) {
+                mapDataStore.addMapDataStore(new MapFile(file), false, false);
+            }
+            TileRendererLayer tileRendererLayer = createTileRendererLayer(tileCache, mapDataStore, mapView.getModel().mapViewPosition, hillsRenderConfig);
+            layers.add(tileRendererLayer);
+            boundingBox = mapDataStore.boundingBox();
+        }
+
+        // Debug
+        if (SHOW_DEBUG_LAYERS) {
+            layers.add(new TileGridLayer(GRAPHIC_FACTORY, mapView.getModel().displayModel));
+            layers.add(new TileCoordinatesLayer(GRAPHIC_FACTORY, mapView.getModel().displayModel));
+        }
+
+        return boundingBox;
+    }
+
+    private static MapView createMapView() {
+        MapView mapView = new MapView();
+        mapView.getMapScaleBar().setVisible(true);
+        if (SHOW_DEBUG_LAYERS) {
+            mapView.getFpsCounter().setVisible(true);
+        }
+
+        return mapView;
+    }
+
+    @SuppressWarnings("unused")
+    private static TileDownloadLayer createTileDownloadLayer(TileCache tileCache, IMapViewPosition mapViewPosition, TileSource tileSource) {
+        return new TileDownloadLayer(tileCache, mapViewPosition, tileSource, GRAPHIC_FACTORY) {
+            @Override
+            public boolean onTap(LatLong tapLatLong, Point layerXY, Point tapXY) {
+                System.out.println("Tap on: " + tapLatLong);
+                return true;
+            }
+        };
+    }
+
+    private static TileRendererLayer createTileRendererLayer(TileCache tileCache, MapDataStore mapDataStore, IMapViewPosition mapViewPosition, HillsRenderConfig hillsRenderConfig) {
+        TileRendererLayer tileRendererLayer = new TileRendererLayer(tileCache, mapDataStore, mapViewPosition, false, true, false, GRAPHIC_FACTORY, hillsRenderConfig) {
+            @Override
+            public boolean onTap(LatLong tapLatLong, Point layerXY, Point tapXY) {
+                System.out.println("Tap on: " + tapLatLong);
+                return true;
+            }
+        };
+        tileRendererLayer.setXmlRenderTheme(InternalRenderTheme.DEFAULT);
+        return tileRendererLayer;
+    }
+
+    private static File getDemFolder(String[] args) {
+    	/*
+        if (args.length == 0) {
+            if (SHOW_RASTER_MAP) {
+                return null;
+            } else {
+                throw new IllegalArgumentException("missing argument: <mapFile>");
+            }
+        }
+
+        File demFolder = new File(args[0]);
+        if (demFolder.exists() && demFolder.isDirectory() && demFolder.canRead()) {
+            return demFolder;
+        }
+        */
+        return null;
     }
 
 
+    private static List<File> getMapFiles() {
+    	/*
+        if (args.length == 0) {
+            throw new IllegalArgumentException("missing argument: <mapFile>");
+        }
+        */
+
+        List<File> result = new ArrayList<>();
+        
+        result.add(new File("C:\\Users\\Benjamin\\OneDrive\\University\\Undergraduate\\MRT\\GroundStation\\FlightTracker\\bin\\application\\prince-edward-island.map"));
+        return result;
+    }
+    
+    
+    @FXML protected void increaseZoom(ActionEvent actionEvent) {
+    	
+    }
+    
+    @FXML protected void decreaseZoom(ActionEvent actionEvent) {
+    	
+    }
 }

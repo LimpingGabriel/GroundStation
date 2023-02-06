@@ -7,4 +7,19 @@ public class TileKey {
 		this.tx = tx;
 		this.ty = ty;
 	}
+	
+	@Override
+	public int hashCode() {
+		return this.toString().hashCode();
+	}
+	
+	@Override
+	public String toString() {
+		return String.format("%d, %d", this.tx, this.ty);
+	}
+	
+	@Override
+	public boolean equals(Object key) {
+		return this.toString().equals(key.toString());
+	}
 }

@@ -1,6 +1,7 @@
 package application;
 
 
+import application.map.MapWidget;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -12,8 +13,11 @@ public class Main extends Application {
         launch(args);
     }
     
+    
     @Override
     public void start(Stage stage) throws Exception {
+    	MapWidget mw = new MapWidget();
+    	
         Parent root = FXMLLoader.load(getClass().getResource("GUI.fxml"));
         
         stage.setMaximized(true);
@@ -25,5 +29,6 @@ public class Main extends Application {
         stage.setScene(scene);
         
         stage.show();
+        
     }
 }
