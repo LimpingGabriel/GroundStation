@@ -1,7 +1,5 @@
 package application;
 
-
-import application.map.MapWidget;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -19,7 +17,7 @@ public class Main extends Application {
         Parent root = FXMLLoader.load(getClass().getResource("GUI.fxml"));
         
         stage.setMaximized(true);
-        stage.setTitle("HAB Flight Computer v0.0.0");
+        stage.setTitle("JFXOpenStreetMap Example");
 
         
         Scene scene = new Scene(root, stage.getWidth(), stage.getHeight());

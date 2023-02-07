@@ -50,7 +50,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.prefs.Preferences;
 
-public class MapWidget extends StackPane {
+public class JFXOpenStreetMap extends StackPane {
 	//----------------FXML-----------------
 	
 	@FXML private SwingNode swingNode;
@@ -60,11 +60,11 @@ public class MapWidget extends StackPane {
     private static final boolean SHOW_DEBUG_LAYERS = false;
     private static final boolean SHOW_RASTER_MAP = false;
     
-    public MapWidget() {
+    public JFXOpenStreetMap() {
     	//FXML
     	
     	
-    	FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("MapWidget.fxml"));
+    	FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("JFXOpenStreetMap.fxml"));
     	fxmlLoader.setRoot(this);
     	fxmlLoader.setController(this);
     	try {
@@ -85,7 +85,7 @@ public class MapWidget extends StackPane {
         final MapView mapView = createMapView();
         final BoundingBox boundingBox = addLayers(mapView, mapFiles, hillsCfg);
 
-        final PreferencesFacade preferencesFacade = new JavaPreferences(Preferences.userNodeForPackage(MapWidget.class));
+        final PreferencesFacade preferencesFacade = new JavaPreferences(Preferences.userNodeForPackage(JFXOpenStreetMap.class));
 
         JPanel panel = new JPanel(new BorderLayout());
 
