@@ -20,9 +20,7 @@ import org.mapsforge.map.layer.debug.TileGridLayer;
 import org.mapsforge.map.layer.download.TileDownloadLayer;
 import org.mapsforge.map.layer.download.tilesource.OpenStreetMapMapnik;
 import org.mapsforge.map.layer.download.tilesource.TileSource;
-import org.mapsforge.map.layer.hills.DiffuseLightShadingAlgorithm;
 import org.mapsforge.map.layer.hills.HillsRenderConfig;
-import org.mapsforge.map.layer.hills.MemoryCachingHgtReaderTileSource;
 import org.mapsforge.map.layer.renderer.TileRendererLayer;
 import org.mapsforge.map.model.IMapViewPosition;
 import org.mapsforge.map.model.Model;
@@ -30,74 +28,130 @@ import org.mapsforge.map.model.common.PreferencesFacade;
 import org.mapsforge.map.reader.MapFile;
 import org.mapsforge.map.rendertheme.InternalRenderTheme;
 
+import javafx.beans.NamedArg;
 import javafx.embed.swing.SwingNode;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.fxml.Initializable;
 import javafx.scene.layout.StackPane;
 
-import javax.swing.*;
 
 import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.ResourceBundle;
 import java.util.UUID;
 import java.util.prefs.Preferences;
 
-public class JFXOpenStreetMap extends StackPane {
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+
+public class JFXOpenStreetMap extends StackPane implements Initializable {
 	//----------------FXML-----------------
 	
 	@FXML private SwingNode swingNode;
 	
 	
     private static final GraphicFactory GRAPHIC_FACTORY = AwtGraphicFactory.INSTANCE;
-    private static final boolean SHOW_DEBUG_LAYERS = false;
+    private static final boolean SHOW_DEBUG_LAYERS = true;
     private static final boolean SHOW_RASTER_MAP = false;
     
-    public JFXOpenStreetMap() {
-    	//FXML
-    	
-    	
+    private String fileDir;
+    
+    private MapView mapView;
+    private BoundingBox boundingBox;
+    private HillsRenderConfig hillsCfg;
+    
+    final PreferencesFacade preferencesFacade = new JavaPreferences(Preferences.userNodeForPackage(JFXOpenStreetMap.class));
+    
+    
+    JPanel panel;
+    JLabel label;
+    
+    private boolean mapInitialized = false;
+    
+    //fileDir required arg
+    public JFXOpenStreetMap(@NamedArg("fileDir") String fileDir) { 	
+    	this.fileDir = fileDir;
+    	//----------------IMPORTANT: LOAD FXML LAST IN CONSTRUCTOR
     	FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("JFXOpenStreetMap.fxml"));
     	fxmlLoader.setRoot(this);
     	fxmlLoader.setController(this);
     	try {
     		fxmlLoader.load();
     	} catch (IOException e) {
-    		e.printStackTrace();
+    		throw new RuntimeException(e);
     	}
     	
-    	
-    	
-        // Square frame buffer
-        Parameters.SQUARE_FRAME_BUFFER = false;
+    }
+    
+    
+    public void setFileDir(String fileDir) {
+    	this.fileDir = fileDir;
+    	this.refreshMapView();
+    	//TO DO: refresh map
+    }
+    
+    
+    public String getFileDir() {
+    	return this.fileDir;
+    }
 
-        HillsRenderConfig hillsCfg = null;
+    @Override
+    public void initialize(URL url, ResourceBundle resources) {
+        Parameters.SQUARE_FRAME_BUFFER = false;        
+        this.mapView = createMapView();
 
-
-        List<File> mapFiles = SHOW_RASTER_MAP ? null : getMapFiles();
-        final MapView mapView = createMapView();
-        final BoundingBox boundingBox = addLayers(mapView, mapFiles, hillsCfg);
-
-        final PreferencesFacade preferencesFacade = new JavaPreferences(Preferences.userNodeForPackage(JFXOpenStreetMap.class));
-
-        JPanel panel = new JPanel(new BorderLayout());
-
-        final Model model = mapView.getModel();
-        model.init(preferencesFacade);
-        if (model.mapViewPosition.getZoomLevel() == 0 || !boundingBox.contains(model.mapViewPosition.getCenter())) {
-            byte zoomLevel = LatLongUtils.zoomForBounds(model.mapViewDimension.getDimension(), boundingBox, model.displayModel.getTileSize());
-            model.mapViewPosition.setMapPosition(new MapPosition(boundingBox.getCenterPoint(), zoomLevel));
-        }
+        panel = new JPanel(new BorderLayout());
+        label = new JLabel("No files found.", SwingConstants.CENTER);
         
-        panel.add(mapView);
+        if (this.fileDir == null) {
+        	//Render map, but don't load files.
+        	showError();
+
+        } else {
+        	
+        	refreshMapView();
+        	
+        }
+  
         swingNode.setContent(panel);
+    }
+    
+    private void refreshMapView() {
+    	try {
+    		List<File> mapFiles = getMapFiles(this.fileDir);
+    		this.boundingBox = JFXOpenStreetMap.addLayers(this.mapView, mapFiles, this.hillsCfg);
+            final Model model = mapView.getModel();
+            model.init(preferencesFacade);
+            if (model.mapViewPosition.getZoomLevel() == 0 || !boundingBox.contains(model.mapViewPosition.getCenter())) {
+                byte zoomLevel = LatLongUtils.zoomForBounds(model.mapViewDimension.getDimension(), boundingBox, model.displayModel.getTileSize());
+                model.mapViewPosition.setMapPosition(new MapPosition(boundingBox.getCenterPoint(), zoomLevel));
+            }
+            
+            this.mapView.setZoomLevelMax((byte)20);
+            this.mapView.setZoomLevelMin((byte)0);
+            panel.add(mapView);
+            
+            if (this.label.getParent() == this.panel) {
+            	this.panel.remove(this.label);
+            }
+            this.mapInitialized = true;
+            
+    	} catch (Exception e) {
+    		this.showError();
+    	}
+    }
+    
+    private void showError() {
+        if (!(this.label.getParent() == this.panel)) {
+        	this.panel.add(label, BorderLayout.CENTER);
+        }
     }
     
     private static BoundingBox addLayers(MapView mapView, List<File> mapFiles, HillsRenderConfig hillsRenderConfig) {
@@ -113,6 +167,7 @@ public class JFXOpenStreetMap extends StackPane {
                 new File(System.getProperty("java.io.tmpdir"), UUID.randomUUID().toString()));
 
         final BoundingBox boundingBox;
+        //Online
         if (SHOW_RASTER_MAP) {
             // Raster
             mapView.getModel().displayModel.setFixedTileSize(tileSize);
@@ -145,7 +200,7 @@ public class JFXOpenStreetMap extends StackPane {
         return boundingBox;
     }
 
-    private static MapView createMapView() {
+    private MapView createMapView() {
         MapView mapView = new MapView();
         mapView.getMapScaleBar().setVisible(true);
         if (SHOW_DEBUG_LAYERS) {
@@ -178,46 +233,31 @@ public class JFXOpenStreetMap extends StackPane {
         return tileRendererLayer;
     }
 
-    private static File getDemFolder(String[] args) {
-    	/*
-        if (args.length == 0) {
-            if (SHOW_RASTER_MAP) {
-                return null;
-            } else {
-                throw new IllegalArgumentException("missing argument: <mapFile>");
-            }
-        }
 
-        File demFolder = new File(args[0]);
-        if (demFolder.exists() && demFolder.isDirectory() && demFolder.canRead()) {
-            return demFolder;
-        }
-        */
-        return null;
-    }
+    private static List<File> getMapFiles(String dirName) {
+    	
+    	final File dirFile = new File(dirName);
+    	List<File> files = new ArrayList<File>();
+    	for (final File fileEntry : dirFile.listFiles()) {
+    		if (!fileEntry.isDirectory()) {
+    			files.add(fileEntry);
+    		}
+    	}
 
-
-    private static List<File> getMapFiles() {
-    	/*
-        if (args.length == 0) {
-            throw new IllegalArgumentException("missing argument: <mapFile>");
-        }
-        */
-
-        List<File> result = new ArrayList<>();
-        
-        result.add(new File("C:\\Users\\Benjamin\\Downloads\\quebec.map"));
-        result.add(new File("C:\\Users\\Benjamin\\Downloads\\prince-edward-island.map"));
-        result.add(new File("C:\\Users\\Benjamin\\Downloads\\us-northeast.map"));
-        return result;
+    	return files;
     }
     
     
     @FXML protected void increaseZoom(ActionEvent actionEvent) {
+    	byte currentZoom = this.mapView.getModel().mapViewPosition.getZoomLevel();
+    	this.mapView.setZoomLevel((byte)(currentZoom + (byte)1));
     	
+        System.out.println(this.mapView.getModel().mapViewPosition.getZoomLevelMax());
     }
     
     @FXML protected void decreaseZoom(ActionEvent actionEvent) {
-    	
+    	byte currentZoom = this.mapView.getModel().mapViewPosition.getZoomLevel();
+    	this.mapView.setZoomLevel((byte)(currentZoom - (byte)1));
     }
+
 }
