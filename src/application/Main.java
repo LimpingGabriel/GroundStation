@@ -1,6 +1,7 @@
 package application;
 
 
+import application.map.MapWidget;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -11,6 +12,7 @@ public class Main extends Application {
     public static void main(String[] args) {
         launch(args);
     }
+    
     
     @Override
     public void start(Stage stage) throws Exception {
@@ -25,5 +27,6 @@ public class Main extends Application {
         stage.setScene(scene);
         
         stage.show();
+        
     }
 }
