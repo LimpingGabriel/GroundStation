@@ -12,7 +12,8 @@
 <?import javafx.scene.text.Text?>
 
 
-<?import application.map.MapWidget?>
+<?import application.map.JFXOpenStreetMap?>
+
 
 
 <BorderPane
@@ -46,6 +47,6 @@
       </MenuBar>
    </top>
    <center>
-      <MapWidget/>
+      <JFXOpenStreetMap/>
    </center>
 </BorderPane>
