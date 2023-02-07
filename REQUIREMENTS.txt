@@ -1,0 +1,2 @@
+JavaFX
+mapsforge=0.18.0
