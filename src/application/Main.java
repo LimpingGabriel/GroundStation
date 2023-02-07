@@ -16,8 +16,6 @@ public class Main extends Application {
     
     @Override
     public void start(Stage stage) throws Exception {
-    	MapWidget mw = new MapWidget();
-    	
         Parent root = FXMLLoader.load(getClass().getResource("GUI.fxml"));
         
         stage.setMaximized(true);

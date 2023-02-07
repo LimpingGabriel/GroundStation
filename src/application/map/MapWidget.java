@@ -59,18 +59,6 @@ public class MapWidget extends StackPane {
     private static final GraphicFactory GRAPHIC_FACTORY = AwtGraphicFactory.INSTANCE;
     private static final boolean SHOW_DEBUG_LAYERS = false;
     private static final boolean SHOW_RASTER_MAP = false;
-
-    private static final String MESSAGE = "Are you sure you want to exit the application?";
-    private static final String TITLE = "Confirm close";
-
-    /**
-     * Starts the {@code Samples}.
-     *
-     * @param args command line args: expects the map files as multiple parameters
-     *             with possible SRTM hgt folder as 1st argument.
-     */
-    
-    
     
     public MapWidget() {
     	//FXML
@@ -99,7 +87,6 @@ public class MapWidget extends StackPane {
 
         final PreferencesFacade preferencesFacade = new JavaPreferences(Preferences.userNodeForPackage(MapWidget.class));
 
-        final JFrame frame = new JFrame();
         JPanel panel = new JPanel(new BorderLayout());
 
         final Model model = mapView.getModel();
@@ -111,7 +98,6 @@ public class MapWidget extends StackPane {
         
         panel.add(mapView);
         swingNode.setContent(panel);
-        System.out.println(panel.getHeight());
     }
     
     private static BoundingBox addLayers(MapView mapView, List<File> mapFiles, HillsRenderConfig hillsRenderConfig) {
@@ -220,13 +206,15 @@ public class MapWidget extends StackPane {
 
         List<File> result = new ArrayList<>();
         
-        result.add(new File("C:\\Users\\Benjamin\\OneDrive\\University\\Undergraduate\\MRT\\GroundStation\\FlightTracker\\bin\\application\\prince-edward-island.map"));
+        result.add(new File("C:\\Users\\Benjamin\\Downloads\\quebec.map"));
+        result.add(new File("C:\\Users\\Benjamin\\Downloads\\prince-edward-island.map"));
+        result.add(new File("C:\\Users\\Benjamin\\Downloads\\us-northeast.map"));
         return result;
     }
     
     
     @FXML protected void increaseZoom(ActionEvent actionEvent) {
-    	this.
+    	
     }
     
     @FXML protected void decreaseZoom(ActionEvent actionEvent) {
