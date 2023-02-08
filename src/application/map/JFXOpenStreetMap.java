@@ -28,22 +28,26 @@ import org.mapsforge.map.model.common.PreferencesFacade;
 import org.mapsforge.map.reader.MapFile;
 import org.mapsforge.map.rendertheme.InternalRenderTheme;
 
+import javafx.application.Platform;
 import javafx.beans.NamedArg;
+import javafx.beans.value.ChangeListener;
 import javafx.embed.swing.SwingNode;
 import javafx.event.ActionEvent;
+import javafx.event.Event;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.fxml.Initializable;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
-
+import javafx.scene.layout.VBox;
+import javafx.stage.WindowEvent;
 
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ResourceBundle;
 import java.util.UUID;
 import java.util.prefs.Preferences;
 
@@ -51,10 +55,11 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
-public class JFXOpenStreetMap extends StackPane implements Initializable {
+public class JFXOpenStreetMap extends BorderPane {
 	//----------------FXML-----------------
 	
 	@FXML private SwingNode swingNode;
+	@FXML private VBox vBoxToolbar;
 	
 	
     private static final GraphicFactory GRAPHIC_FACTORY = AwtGraphicFactory.INSTANCE;
@@ -75,6 +80,8 @@ public class JFXOpenStreetMap extends StackPane implements Initializable {
     
     private boolean mapInitialized = false;
     
+    
+    
     //fileDir required arg
     public JFXOpenStreetMap(@NamedArg("fileDir") String fileDir) { 	
     	this.fileDir = fileDir;
@@ -88,13 +95,22 @@ public class JFXOpenStreetMap extends StackPane implements Initializable {
     		throw new RuntimeException(e);
     	}
     	
+    	//This absolutely cursed code is to ensure that the window closes all resources because JavaFX has
+    	//bad memory leaks with SwingNodes for some reason. I think it has to do with embedded content
+    	//Spawning an extra thread, which prevents the program from exiting. This should work to 
+    	//override the JavaFX close, which will at least ensure the program exits.
+    	JFXOpenStreetMap that = this;
+    	Platform.runLater(new Runnable() {
+    		@Override
+    		public void run() {
+    			that.ensureWindowClose();
+    		}
+    	});
     }
     
     
     public void setFileDir(String fileDir) {
     	this.fileDir = fileDir;
-    	this.refreshMapView();
-    	//TO DO: refresh map
     }
     
     
@@ -102,25 +118,23 @@ public class JFXOpenStreetMap extends StackPane implements Initializable {
     	return this.fileDir;
     }
 
-    @Override
-    public void initialize(URL url, ResourceBundle resources) {
+    public void initialize() {
         Parameters.SQUARE_FRAME_BUFFER = false;        
         this.mapView = createMapView();
+        this.mapView.setMaximumSize(new Dimension(200, 200));
+        System.out.println(this.mapView.getMaximumSize());
+        
+        
 
         panel = new JPanel(new BorderLayout());
         label = new JLabel("No files found.", SwingConstants.CENTER);
-        
-        if (this.fileDir == null) {
-        	//Render map, but don't load files.
-        	showError();
 
-        } else {
-        	
-        	refreshMapView();
-        	
-        }
-  
+        refreshMapView();
+        
+        
+
         swingNode.setContent(panel);
+        swingNode.autosize();
     }
     
     private void refreshMapView() {
@@ -136,11 +150,10 @@ public class JFXOpenStreetMap extends StackPane implements Initializable {
             
             this.mapView.setZoomLevelMax((byte)20);
             this.mapView.setZoomLevelMin((byte)0);
-            panel.add(mapView);
             
-            if (this.label.getParent() == this.panel) {
-            	this.panel.remove(this.label);
-            }
+            this.panel.removeAll();
+            this.panel.add(mapView);
+            
             this.mapInitialized = true;
             
     	} catch (Exception e) {
@@ -149,9 +162,10 @@ public class JFXOpenStreetMap extends StackPane implements Initializable {
     }
     
     private void showError() {
-        if (!(this.label.getParent() == this.panel)) {
-        	this.panel.add(label, BorderLayout.CENTER);
-        }
+        this.panel.removeAll();
+        this.panel.add(label, BorderLayout.CENTER);
+        System.out.println("Error: Could not initialize map.");
+
     }
     
     private static BoundingBox addLayers(MapView mapView, List<File> mapFiles, HillsRenderConfig hillsRenderConfig) {
@@ -247,17 +261,39 @@ public class JFXOpenStreetMap extends StackPane implements Initializable {
     	return files;
     }
     
-    
     @FXML protected void increaseZoom(ActionEvent actionEvent) {
     	byte currentZoom = this.mapView.getModel().mapViewPosition.getZoomLevel();
     	this.mapView.setZoomLevel((byte)(currentZoom + (byte)1));
-    	
-        System.out.println(this.mapView.getModel().mapViewPosition.getZoomLevelMax());
     }
     
     @FXML protected void decreaseZoom(ActionEvent actionEvent) {
     	byte currentZoom = this.mapView.getModel().mapViewPosition.getZoomLevel();
     	this.mapView.setZoomLevel((byte)(currentZoom - (byte)1));
+
     }
 
+    private void close() {
+    	System.out.println("Close called");
+    	this.mapView.destroyAll();
+    	AwtGraphicFactory.clearResourceMemoryCache();
+    	Platform.exit();
+    	System.exit(0);
+    }
+    
+    public boolean windowInitialized() {
+    	return ! (this.getScene() == null);
+    }
+    
+    public void ensureWindowClose() {
+    	ChangeListener<Number> stageSizeListener = (observable, oldValue, newValue) -> {
+    		//Refresh graphics to remove artefacts
+    		
+    	};
+    	this.getScene().widthProperty().addListener(stageSizeListener);
+    	this.getScene().heightProperty().addListener(stageSizeListener);
+    	this.getScene().getWindow().setOnCloseRequest(event -> {
+    		close();
+    	});
+    }
+    
 }

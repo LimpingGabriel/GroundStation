@@ -9,9 +9,8 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.embed.swing.SwingNode?>
 
-<fx:root type="javafx.scene.layout.StackPane" xmlns:fx="http://javafx.com/fxml">
-  <children>
-    <BorderPane prefHeight="200.0" prefWidth="200.0">
+<fx:root type="javafx.scene.layout.BorderPane" xmlns:fx="http://javafx.com/fxml">
+
        <right>
           <VBox prefHeight="90.0" prefWidth="30.0" style="-fx-background-color: #EEEEEE;" BorderPane.alignment="CENTER">
              <children>
@@ -30,6 +29,5 @@
           
           </SwingNode>
        </center>
-    </BorderPane>
-  </children>
+
 </fx:root>
